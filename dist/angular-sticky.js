@@ -171,6 +171,8 @@ angular.module('hl.sticky', [])
 			var anchor = typeof options.anchor === 'string' ? options.anchor.toLowerCase().trim() : 'top';
 			var container = null;
 			var stack = options.stack === false ? null : options.stack || hlStickyStack();
+			var originOffsetTop = $(nativeEl).offset().top;
+			var initiated = false;
 
 			var event = angular.isFunction(options.event) ? options.event : angular.noop;
 			var globalOffset = {
@@ -224,7 +226,7 @@ angular.module('hl.sticky', [])
 			function sticksAtPositionTop(scrolledDistance) {
 				scrolledDistance = scrolledDistance !== undefined ? scrolledDistance : window.pageYOffset || bodyEl.scrollTop;
 				var scrollTop = scrolledDistance - (documentEl.clientTop || 0);
-				return scrollTop >= stickyLinePositionTop();
+				return scrollTop  >= stickyLinePositionTop() + originOffsetTop;
 			}
 			function sticksAtPositionBottom(scrolledDistance) {
 				scrolledDistance = scrolledDistance !== undefined ? scrolledDistance : (window.pageYOffset || bodyEl.scrollTop);
@@ -236,6 +238,9 @@ angular.module('hl.sticky', [])
 			}
 
 			function render() {
+				if (!initiated)
+					initElement();
+
 				var shouldStick = sticksAtPosition(anchor);
 
 				// Switch the sticky mode if the element crosses the sticky line
@@ -260,7 +265,26 @@ angular.module('hl.sticky', [])
 						element.css('bottom', (offsetBottom + _stackOffset(anchor) - containerBoundsTop()) + 'px');
 					}
 					element.css('width', elementWidth() + 'px');
+				} else {
+					$(element).css('top', originOffsetTop - $(window).scrollTop());
+					element.css('width', elementWidth() + 'px');
 				}
+			}
+
+			function initElement() {
+				var rect = nativeEl.getBoundingClientRect();
+				var css = {
+					'width': elementWidth() + 'px',
+					'position': 'fixed',
+					'left': rect.left + 'px',
+					'top': originOffsetTop,
+					'z-index': stack ? stack.get(id).zIndex - (globalOffset.zIndex || 0) : null
+				};
+
+				css['margin-' + anchor] = 0;
+				element.css(css);
+
+				initiated = true;
 			}
 
 			function stickElement() {
@@ -292,7 +316,10 @@ angular.module('hl.sticky', [])
 				element.removeClass(stickyClass);
 
 				// reset the original css we might have changed when the object was sticky
-				element.attr('style', initialCSS.style);
+				//element.attr('style', initialCSS.style);
+				//
+				console.log('originOffsetTop : ', originOffsetTop);
+				$(element).css({top: originOffsetTop});
 
 				// if a placeholder was used, remove it from the DOM
 				if (placeholder) {
@@ -669,3 +696,4 @@ angular.module('hl.sticky', [])
 			};
 		};
 	}]);
+
